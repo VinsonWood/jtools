@@ -1,0 +1,268 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_id: ${{ steps.create_release.outputs.id }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Get version
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_version.outputs.VERSION }}
+        release_name: "Jellyfin工具箱 ${{ steps.get_version.outputs.VERSION }}"
+        body: |
+          ## 🚀 Jellyfin工具箱 ${{ steps.get_version.outputs.VERSION }}
+          
+          🤖 **本版本由 Claude Code 创建** - 使用 AI 助手进行完整开发
+          
+          ### 📦 下载
+          
+          - **Windows**: 下载 `jtools-windows.zip`
+          - **macOS**: 下载 `jtools-macos.zip` 
+          - **Linux**: 下载 `jtools-linux.zip`
+          - **通用JAR**: 下载 `jtools-${{ steps.get_version.outputs.VERSION }}.jar`
+          
+          ### 🎯 主要功能
+          
+          - 🎬 导入导出Jellyfin喜爱的电影和演员
+          - 🔄 跨服务器智能迁移
+          - 🔍 重复电影检测和管理
+          - 👁️ 导出内容可视化预览
+          - 📱 高分辨率屏幕完美适配
+          - 🌐 跨平台支持 (Windows, macOS, Linux)
+          
+          ### 🛠️ 技术特色
+          
+          - Kotlin Multiplatform 架构
+          - Compose Desktop 现代UI
+          - Material Design 3 设计语言
+          - AI 驱动的代码质量
+          
+          ### 🚦 使用方法
+          
+          #### GUI版本（推荐）
+          ```bash
+          # 解压后运行
+          ./jellyfin-tools-gui
+          ```
+          
+          #### CLI版本
+          ```bash
+          # 测试连接
+          ./jellyfin-tools-cli test -s http://your-server:8096 -t your-token
+          
+          # 导出数据
+          ./jellyfin-tools-cli export -s http://your-server:8096 -t your-token -o favorites.json
+          
+          # 导入数据
+          ./jellyfin-tools-cli import -s http://your-server:8096 -t your-token -i favorites.json
+          ```
+          
+          ---
+          
+          **完整文档**: [README.md](https://github.com/${{ github.repository }}/blob/main/README.md)
+          
+          **反馈问题**: [Issues](https://github.com/${{ github.repository }}/issues)
+        draft: false
+        prerelease: false
+
+  build-cross-platform:
+    needs: create-release
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            executable-suffix: ""
+            archive-suffix: "tar.gz"
+          - os: windows-latest
+            platform: windows
+            executable-suffix: ".exe"
+            archive-suffix: "zip"
+          - os: macos-latest
+            platform: macos
+            executable-suffix: ""
+            archive-suffix: "zip"
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
+    - name: Grant execute permission for gradlew (Unix)
+      if: matrix.os != 'windows-latest'
+      run: chmod +x gradlew
+      
+    - name: Build JAR
+      run: ./gradlew jvmJar
+      
+    - name: Build executables (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        chmod +x build-gui.sh
+        ./build-gui.sh
+        
+    - name: Build executables (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        .\gradlew.bat jvmJar
+        echo "@echo off" > jellyfin-tools-gui.bat
+        echo "java -cp \"%~dp0build\libs\jtools-jvm-1.0.0.jar\" com.jtools.jellyfin.gui.MainKt %*" >> jellyfin-tools-gui.bat
+        echo "@echo off" > jellyfin-tools-cli.bat
+        echo "java -jar \"%~dp0build\libs\jtools-jvm-1.0.0.jar\" %*" >> jellyfin-tools-cli.bat
+        
+    - name: Create distribution directory
+      run: |
+        mkdir -p dist/jtools-${{ matrix.platform }}
+        
+    - name: Copy files (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        cp build/libs/*.jar dist/jtools-${{ matrix.platform }}/
+        cp jellyfin-tools-gui dist/jtools-${{ matrix.platform }}/
+        cp jellyfin-tools-cli dist/jtools-${{ matrix.platform }}/
+        cp README.md dist/jtools-${{ matrix.platform }}/
+        cp jellyfin-config.example.json dist/jtools-${{ matrix.platform }}/
+        
+    - name: Copy files (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        copy "build\libs\*.jar" "dist\jtools-${{ matrix.platform }}\"
+        copy "jellyfin-tools-gui.bat" "dist\jtools-${{ matrix.platform }}\"
+        copy "jellyfin-tools-cli.bat" "dist\jtools-${{ matrix.platform }}\"
+        copy "README.md" "dist\jtools-${{ matrix.platform }}\"
+        copy "jellyfin-config.example.json" "dist\jtools-${{ matrix.platform }}\"
+        
+    - name: Create archive (Linux)
+      if: matrix.platform == 'linux'
+      run: |
+        cd dist
+        tar -czf jtools-${{ matrix.platform }}.tar.gz jtools-${{ matrix.platform }}/
+        
+    - name: Create archive (Windows/macOS)
+      if: matrix.platform != 'linux'
+      uses: thedoctor0/zip-action@v1
+      with:
+        type: 'zip'
+        filename: 'jtools-${{ matrix.platform }}.zip'
+        directory: 'dist'
+        path: 'jtools-${{ matrix.platform }}'
+        
+    - name: Upload Release Asset (Linux)
+      if: matrix.platform == 'linux'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./dist/jtools-${{ matrix.platform }}.tar.gz
+        asset_name: jtools-${{ matrix.platform }}.tar.gz
+        asset_content_type: application/gzip
+        
+    - name: Upload Release Asset (Windows/macOS)
+      if: matrix.platform != 'linux'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./dist/jtools-${{ matrix.platform }}.zip
+        asset_name: jtools-${{ matrix.platform }}.zip
+        asset_content_type: application/zip
+
+  build-native-packages:
+    needs: create-release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+      
+    - name: Build native packages
+      run: |
+        ./gradlew packageDistributionForCurrentOS
+        
+    - name: Get version
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Upload universal JAR
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./build/libs/jtools-jvm-1.0.0.jar
+        asset_name: jtools-${{ steps.get_version.outputs.VERSION }}.jar
+        asset_content_type: application/java-archive

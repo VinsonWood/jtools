@@ -1,0 +1,64 @@
+# Gradle files
+.gradle/
+build/
+gradle-*/
+!gradle/wrapper/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Kotlin
+*.kotlin_module
+*.kotlin_metadata
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.swp
+*.swo
+*~
+
+# Application specific
+jellyfin-config.json
+jellyfin-tools-*
+jtools-*
+*.json
+!gradle.properties
+!jellyfin-config.example.json
+
+# Build artifacts
+bin/
+out/
+target/
+
+# Local environment
+.env
+.env.local
+local.properties
+
+# Test files
+test-*.json
+demo-*.json
+favorites-*.json

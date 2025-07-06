@@ -1,0 +1,6 @@
+{
+  "serverUrl": "http://localhost:8096",
+  "apiToken": "your-api-token-here",
+  "userId": "your-user-id-here",
+  "timeout": 30000
+}
