@@ -190,12 +190,13 @@ jobs:
         
     - name: Create archive (Windows/macOS)
       if: matrix.platform != 'linux'
-      uses: thedoctor0/zip-action@v1
-      with:
-        type: 'zip'
-        filename: 'jtools-${{ matrix.platform }}.zip'
-        directory: 'dist'
-        path: 'jtools-${{ matrix.platform }}'
+      run: |
+        cd dist
+        if [ "${{ matrix.platform }}" = "windows" ]; then
+          powershell Compress-Archive -Path "jtools-${{ matrix.platform }}" -DestinationPath "jtools-${{ matrix.platform }}.zip"
+        else
+          zip -r jtools-${{ matrix.platform }}.zip jtools-${{ matrix.platform }}/
+        fi
         
     - name: Upload Release Asset (Linux)
       if: matrix.platform == 'linux'
