@@ -46,18 +46,21 @@ jobs:
           
           🤖 **本版本由 Claude Code 创建** - 使用 AI 助手进行完整开发
           
-          ### 📦 下载
+          ### 📦 下载说明
           
-          - **Windows**: 下载 `jtools-windows.zip`
-          - **macOS**: 下载 `jtools-macos.zip` 
-          - **Linux**: 下载 `jtools-linux.zip`
-          - **通用JAR**: 下载 `jtools-${{ steps.get_version.outputs.VERSION }}.jar`
+          **每个平台包都是完全独立的，包含所有运行时依赖：**
+          
+          - **Windows**: 下载 `jtools-windows.zip` - 包含完整的fat JAR和启动脚本
+          - **macOS**: 下载 `jtools-macos.zip` - 包含完整的fat JAR和启动脚本
+          - **Linux**: 下载 `jtools-linux.tar.gz` - 包含完整的fat JAR和启动脚本
+          - **通用JAR**: 下载 `jtools-${{ steps.get_version.outputs.VERSION }}.jar` - 独立运行的fat JAR文件
           
           ### 🎯 主要功能
           
           - 🎬 导入导出Jellyfin喜爱的电影和演员
           - 🔄 跨服务器智能迁移
           - 🔍 重复电影检测和管理
+          - 📊 分辨率筛选功能
           - 👁️ 导出内容可视化预览
           - 📱 高分辨率屏幕完美适配
           - 🌐 跨平台支持 (Windows, macOS, Linux)
@@ -67,14 +70,16 @@ jobs:
           - Kotlin Multiplatform 架构
           - Compose Desktop 现代UI
           - Material Design 3 设计语言
+          - Fat JAR 独立运行，无需额外依赖
           - AI 驱动的代码质量
           
           ### 🚦 使用方法
           
           #### GUI版本（推荐）
           ```bash
-          # 解压后运行
-          ./jellyfin-tools-gui
+          # 解压后运行（所有平台）
+          ./jellyfin-tools-gui      # Linux/macOS
+          jellyfin-tools-gui.bat    # Windows
           ```
           
           #### CLI版本
@@ -87,7 +92,25 @@ jobs:
           
           # 导入数据
           ./jellyfin-tools-cli import -s http://your-server:8096 -t your-token -i favorites.json
+          
+          # 分辨率筛选
+          ./jellyfin-tools-cli resolution -s http://your-server:8096 -t your-token --max-resolution 1080p
           ```
+          
+          #### 直接使用JAR文件
+          ```bash
+          # GUI
+          java -cp jtools-jvm-1.0.0.jar com.jtools.jellyfin.gui.MainKt
+          
+          # CLI
+          java -jar jtools-jvm-1.0.0.jar --help
+          ```
+          
+          ### 📋 系统要求
+          
+          - Java 17 或更高版本
+          - 2GB+ 可用内存（推荐）
+          - 网络连接访问Jellyfin服务器
           
           ---
           
@@ -145,7 +168,7 @@ jobs:
     - name: Simplify build for release (Unix)
       if: matrix.os != 'windows-latest'
       run: |
-        # Create a simplified build.gradle.kts for release builds
+        # Create a simplified build.gradle.kts for release builds with fat JAR
         cp build.gradle.kts build.gradle.kts.backup
         cat > build.gradle.kts << 'EOF'
         plugins {
@@ -195,6 +218,24 @@ jobs:
             }
         }
 
+        // 重新配置jvmJar任务以正确包含所有依赖
+        tasks.named<Jar>("jvmJar") {
+            manifest {
+                attributes["Main-Class"] = "com.jtools.jellyfin.MainKt"
+            }
+            
+            val jvmMain = kotlin.jvm().compilations.getByName("main")
+            from(jvmMain.output)
+            
+            dependsOn(jvmMain.compileTaskProvider)
+            
+            from({
+                jvmMain.runtimeDependencyFiles.filter { it.name.endsWith("jar") }.map { zipTree(it) }
+            })
+            
+            duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        }
+
         compose.desktop {
             application {
                 mainClass = "com.jtools.jellyfin.gui.MainKt"
@@ -218,7 +259,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       shell: powershell
       run: |
-        # Create a simplified build.gradle.kts for release builds
+        # Create a simplified build.gradle.kts for release builds with fat JAR
         Copy-Item build.gradle.kts build.gradle.kts.backup
         @"
         plugins {
@@ -268,6 +309,24 @@ jobs:
             }
         }
 
+        // 重新配置jvmJar任务以正确包含所有依赖
+        tasks.named<Jar>("jvmJar") {
+            manifest {
+                attributes["Main-Class"] = "com.jtools.jellyfin.MainKt"
+            }
+            
+            val jvmMain = kotlin.jvm().compilations.getByName("main")
+            from(jvmMain.output)
+            
+            dependsOn(jvmMain.compileTaskProvider)
+            
+            from({
+                jvmMain.runtimeDependencyFiles.filter { it.name.endsWith("jar") }.map { zipTree(it) }
+            })
+            
+            duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        }
+
         compose.desktop {
             application {
                 mainClass = "com.jtools.jellyfin.gui.MainKt"
@@ -289,12 +348,22 @@ jobs:
         
     - name: Build JAR (Unix)
       if: matrix.os != 'windows-latest'
-      run: ./gradlew jvmJar --no-daemon
+      run: ./gradlew clean jvmJar --no-daemon
       
     - name: Build JAR (Windows)
       if: matrix.os == 'windows-latest'
       shell: cmd
-      run: gradlew.bat jvmJar --no-daemon
+      run: gradlew.bat clean jvmJar --no-daemon
+      
+    - name: Verify fat JAR
+      run: |
+        JAR_SIZE=$(ls -la build/libs/jtools-jvm-1.0.0.jar | awk '{print $5}')
+        echo "JAR size: $JAR_SIZE bytes"
+        if [ $JAR_SIZE -lt 50000000 ]; then
+          echo "⚠️  JAR size seems too small for a fat JAR (< 50MB)"
+        else
+          echo "✅ JAR size looks good for a fat JAR"
+        fi
       
     - name: Build executables (Unix)
       if: matrix.os != 'windows-latest'
