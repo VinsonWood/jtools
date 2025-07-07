@@ -10,6 +10,7 @@
 - 🎬 **导入导出** - 喜爱的电影和演员列表
 - 🔄 **智能迁移** - 跨服务器数据迁移，智能匹配内容
 - 🔍 **重复检测** - 发现并管理重复的电影内容
+- 📺 **分辨率筛选** - 筛选指定分辨率以下的电影，支持统计和导出
 - 📋 **内容预览** - 可视化浏览导出的数据
 - 📊 **详细日志** - 完整的操作过程追踪
 - 📱 **高DPI适配** - 完美支持高分辨率屏幕
@@ -72,6 +73,7 @@ GUI版本功能：
 - 📁 **文件管理** - 便捷的文件导入导出对话框
 - 📱 **UI缩放** - 完美适配高分辨率屏幕，缩放设置自动保存
 - 🔍 **重复检测** - 可视化显示重复电影，一键打开Jellyfin页面
+- 📺 **分辨率筛选** - 可视化分辨率统计，支持预设和自定义分辨率筛选
 - 👁️ **内容预览** - 导出文件的可视化预览，电影和演员分类展示
 - ⚡ **响应式设计** - Material Design 3，完美适配不同屏幕尺寸
 - 🤖 **AI驱动** - 全程由Claude Code AI辅助开发，代码质量优异
@@ -101,6 +103,24 @@ GUI版本功能：
 ./jellyfin-tools-cli import -s http://your-jellyfin-server:8096 -t your-api-token -i favorites.json
 ```
 
+#### 分辨率筛选
+
+筛选指定分辨率以下的电影：
+
+```bash
+# 显示分辨率统计
+./jellyfin-tools-cli resolution -s http://your-jellyfin-server:8096 -t your-api-token --stats-only
+
+# 筛选1080p以下的电影
+./jellyfin-tools-cli resolution -s http://your-jellyfin-server:8096 -t your-api-token -p 1080p
+
+# 自定义分辨率筛选
+./jellyfin-tools-cli resolution -s http://your-jellyfin-server:8096 -t your-api-token -w 1280 -h 720
+
+# 保存结果到文件
+./jellyfin-tools-cli resolution -s http://your-jellyfin-server:8096 -t your-api-token -p 720p -o low_res_movies.json
+```
+
 ## 命令行选项
 
 ### 通用选项
@@ -116,6 +136,15 @@ GUI版本功能：
 ### import命令
 
 - `-i, --input`: 输入文件路径（必需）
+
+### resolution命令
+
+- `-w, --width`: 最大宽度
+- `-h, --height`: 最大高度  
+- `-p, --preset`: 预设分辨率 (480p, 720p, 1080p, 4k)
+- `-o, --output`: 输出文件路径（可选）
+- `--include-unknown`: 包含未知分辨率的电影
+- `--stats-only`: 只显示统计信息
 
 ## 导出文件格式
 

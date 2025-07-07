@@ -112,11 +112,20 @@ fun NavigationSidebar(
             )
             
             NavigationItem(
+                icon = Icons.Default.VideoSettings,
+                title = "分辨率筛选",
+                subtitle = "查找低分辨率电影",
+                selected = selectedTab == 4,
+                onClick = { onTabSelected(4) },
+                uiScale = uiScale
+            )
+            
+            NavigationItem(
                 icon = Icons.Default.Settings,
                 title = "设置",
                 subtitle = "配置选项",
-                selected = selectedTab == 4,
-                onClick = { onTabSelected(4) },
+                selected = selectedTab == 5,
+                onClick = { onTabSelected(5) },
                 uiScale = uiScale
             )
             
@@ -124,8 +133,8 @@ fun NavigationSidebar(
                 icon = Icons.Default.Info,
                 title = "关于",
                 subtitle = "帮助信息",
-                selected = selectedTab == 5,
-                onClick = { onTabSelected(5) },
+                selected = selectedTab == 6,
+                onClick = { onTabSelected(6) },
                 uiScale = uiScale
             )
             

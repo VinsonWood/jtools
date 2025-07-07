@@ -63,7 +63,8 @@ fun MainApp(appState: AppState) {
                     1 -> LogContentPanelWithScale(appState, uiScale)
                     2 -> PreviewContentPanel(appState, uiScale)
                     3 -> DuplicateMoviePanel(appState, uiScale)
-                    4 -> SettingsContentPanel(appState, uiScale) { newScale ->
+                    4 -> ResolutionFilterPanel(appState, uiScale)
+                    5 -> SettingsContentPanel(appState, uiScale) { newScale ->
                         uiScale = newScale
                         // 保存UI缩放设置
                         try {
@@ -75,7 +76,7 @@ fun MainApp(appState: AppState) {
                             println("保存UI缩放设置失败: ${e.message}")
                         }
                     }
-                    5 -> AboutContentPanelWithScale(appState, uiScale)
+                    6 -> AboutContentPanelWithScale(appState, uiScale)
                 }
             }
         }

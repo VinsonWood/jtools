@@ -184,6 +184,6 @@ class DuplicateMovieService(private val apiClient: JellyfinApiClient) {
             unitIndex++
         }
         
-        return "%.1f%s".format(size, units[unitIndex])
+        return "${String.format("%.1f", size)}${units[unitIndex]}"
     }
 }

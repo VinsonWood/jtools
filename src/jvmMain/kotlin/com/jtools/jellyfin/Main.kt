@@ -13,7 +13,8 @@ fun main(args: Array<String>) {
             ImportCommand(),
             TestCommand(),
             ViewCommand(),
-            ConfigCommand()
+            ConfigCommand(),
+            ResolutionCommand()
         )
         .main(args)
 }

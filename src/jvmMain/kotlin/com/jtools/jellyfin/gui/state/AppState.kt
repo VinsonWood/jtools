@@ -63,6 +63,12 @@ class AppState {
     private var apiClient: JellyfinApiClient? = null
     private val scope = CoroutineScope(Dispatchers.IO)
     
+    // 公共访问属性
+    val config: JellyfinConfig?
+        get() = apiClient?.config
+    
+    fun getApiClient(): JellyfinApiClient? = apiClient
+    
     init {
         // 应用启动时自动加载配置（不在初始化时立即调用，而是延迟调用）
         scope.launch {
