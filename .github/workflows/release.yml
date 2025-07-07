@@ -142,8 +142,79 @@ jobs:
       if: matrix.os != 'windows-latest'
       run: chmod +x gradlew
       
+    - name: Simplify build for release
+      run: |
+        # Create a simplified build.gradle.kts for release builds
+        cp build.gradle.kts build.gradle.kts.backup
+        cat > build.gradle.kts << 'EOF'
+        plugins {
+            kotlin("multiplatform") version "1.9.20"
+            kotlin("plugin.serialization") version "1.9.20"
+            id("org.jetbrains.compose") version "1.5.11"
+        }
+
+        group = "com.jtools"
+        version = "1.0.0"
+
+        repositories {
+            mavenCentral()
+            google()
+            maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+        }
+
+        kotlin {
+            jvm {
+                jvmToolchain(17)
+                withJava()
+            }
+
+            sourceSets {
+                val commonMain by getting {
+                    dependencies {
+                        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+                        implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+                        implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
+                        implementation("io.ktor:ktor-client-core:2.3.5")
+                        implementation("io.ktor:ktor-client-content-negotiation:2.3.5")
+                        implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.5")
+                        implementation("io.ktor:ktor-client-logging:2.3.5")
+                    }
+                }
+
+                val jvmMain by getting {
+                    dependencies {
+                        implementation(compose.desktop.currentOs)
+                        implementation(compose.material3)
+                        implementation(compose.materialIconsExtended)
+                        implementation("io.ktor:ktor-client-okhttp:2.3.5")
+                        implementation("org.slf4j:slf4j-simple:2.0.9")
+                        implementation("com.github.ajalt.clikt:clikt:4.2.1")
+                    }
+                }
+            }
+        }
+
+        compose.desktop {
+            application {
+                mainClass = "com.jtools.jellyfin.gui.MainKt"
+                nativeDistributions {
+                    targetFormats(
+                        org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg,
+                        org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi,
+                        org.jetbrains.compose.desktop.application.dsl.TargetFormat.Deb
+                    )
+                    packageName = "jellyfin-tools"
+                    packageVersion = "1.0.0"
+                    description = "Jellyfin工具箱 - AI驱动的跨服务器数据迁移工具"
+                    copyright = "© 2024 JTools Team. Created with Claude Code."
+                    vendor = "JTools Team"
+                }
+            }
+        }
+        EOF
+        
     - name: Build JAR
-      run: ./gradlew jvmJar
+      run: ./gradlew jvmJar --no-daemon
       
     - name: Build executables (Unix)
       if: matrix.os != 'windows-latest'
