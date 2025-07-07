@@ -50,20 +50,10 @@ jobs:
           
           **每个平台包都是完全独立的，包含所有运行时依赖：**
           
-          #### Windows
-          - **便携版**: `jtools-windows.zip` - 包含fat JAR和启动脚本
-          - **安装包**: `jtools-1.0.0.msi` - Windows安装程序
-          
-          #### Linux  
-          - **便携版**: `jtools-linux.tar.gz` - 包含fat JAR和启动脚本
-          - **DEB包**: `jtools_1.0.0_amd64.deb` - Debian/Ubuntu安装包（如果构建成功）
-          
-          #### macOS
-          - **便携版**: `jtools-macos.zip` - 包含fat JAR和启动脚本  
-          - **DMG包**: `jtools-1.0.0.dmg` - macOS安装镜像
-          
-          #### 通用JAR
-          - **Fat JAR**: `jtools-${{ steps.get_version.outputs.VERSION }}.jar` - 独立运行的完整JAR文件
+          - **Windows**: `jtools-windows.zip` - 包含fat JAR和启动脚本
+          - **macOS**: `jtools-macos.zip` - 包含fat JAR和启动脚本  
+          - **Linux**: `jtools-linux.tar.gz` - 包含fat JAR和启动脚本
+          - **通用JAR**: `jtools-${{ steps.get_version.outputs.VERSION }}.jar` - 独立运行的完整JAR文件
           
           ### 🎯 主要功能
           
@@ -463,29 +453,23 @@ jobs:
         zip -r jtools-${{ matrix.platform }}.zip jtools-${{ matrix.platform }}/
         
     - name: Build native packages (Linux)
-      if: matrix.platform == 'linux'
+      if: matrix.platform == 'linux' && false
       run: |
-        # 为Linux构建deb包（rpm可能不可用）
-        ./gradlew packageDeb --no-daemon || echo "DEB packaging failed, skipping..."
+        # 暂时禁用原生包构建 - 专注于稳定的便携版包
+        echo "Native packaging temporarily disabled for stability"
         
     - name: Build native packages (macOS)
-      if: matrix.platform == 'macos'
+      if: matrix.platform == 'macos' && false
       run: |
-        # 为macOS构建dmg包
-        ./gradlew packageDmg --no-daemon || echo "DMG packaging failed, skipping..."
+        # 暂时禁用原生包构建 - 专注于稳定的便携版包
+        echo "Native packaging temporarily disabled for stability"
         
     - name: Build native packages (Windows)
-      if: matrix.platform == 'windows'
+      if: matrix.platform == 'windows' && false
       shell: powershell
       run: |
-        try {
-          # 为Windows构建msi包
-          .\gradlew.bat packageMsi --no-daemon
-          Write-Host "MSI packaging succeeded"
-        } catch {
-          Write-Host "MSI packaging failed: $($_.Exception.Message)"
-          Write-Host "Continuing with portable version only..."
-        }
+        # 暂时禁用原生包构建 - 专注于稳定的便携版包
+        Write-Host "Native packaging temporarily disabled for stability"
         
     - name: Upload Release Assets (Linux)
       if: matrix.platform == 'linux'
@@ -493,14 +477,7 @@ jobs:
       run: |
         # 上传便携版包
         gh release upload ${{ needs.create-release.outputs.version }} ./dist/jtools-${{ matrix.platform }}.tar.gz --clobber
-        
-        # 检查并上传DEB包（如果存在）
-        if ls ./build/compose/binaries/main/deb/*.deb 1> /dev/null 2>&1; then
-          gh release upload ${{ needs.create-release.outputs.version }} ./build/compose/binaries/main/deb/*.deb --clobber
-          echo "DEB package uploaded successfully"
-        else
-          echo "No DEB package found, skipping DEB upload"
-        fi
+        echo "Linux portable package uploaded successfully"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
@@ -510,14 +487,7 @@ jobs:
       run: |
         # 上传便携版包
         gh release upload ${{ needs.create-release.outputs.version }} ./dist/jtools-${{ matrix.platform }}.zip --clobber
-        
-        # 检查并上传MSI包（如果存在）
-        if (Test-Path "./build/compose/binaries/main/msi/*.msi") {
-          gh release upload ${{ needs.create-release.outputs.version }} ./build/compose/binaries/main/msi/*.msi --clobber
-          Write-Host "MSI package uploaded successfully"
-        } else {
-          Write-Host "No MSI package found, skipping MSI upload"
-        }
+        Write-Host "Windows portable package uploaded successfully"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
@@ -527,14 +497,7 @@ jobs:
       run: |
         # 上传便携版包
         gh release upload ${{ needs.create-release.outputs.version }} ./dist/jtools-${{ matrix.platform }}.zip --clobber
-        
-        # 检查并上传DMG包（如果存在）
-        if ls ./build/compose/binaries/main/dmg/*.dmg 1> /dev/null 2>&1; then
-          gh release upload ${{ needs.create-release.outputs.version }} ./build/compose/binaries/main/dmg/*.dmg --clobber
-          echo "DMG package uploaded successfully"
-        else
-          echo "No DMG package found, skipping DMG upload"
-        fi
+        echo "macOS portable package uploaded successfully"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
