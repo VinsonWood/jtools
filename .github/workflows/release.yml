@@ -50,10 +50,21 @@ jobs:
           
           **每个平台包都是完全独立的，包含所有运行时依赖：**
           
-          - **Windows**: 下载 `jtools-windows.zip` - 包含完整的fat JAR和启动脚本
-          - **macOS**: 下载 `jtools-macos.zip` - 包含完整的fat JAR和启动脚本
-          - **Linux**: 下载 `jtools-linux.tar.gz` - 包含完整的fat JAR和启动脚本
-          - **通用JAR**: 下载 `jtools-${{ steps.get_version.outputs.VERSION }}.jar` - 独立运行的fat JAR文件
+          #### Windows
+          - **便携版**: `jtools-windows.zip` - 包含fat JAR和启动脚本
+          - **安装包**: `jtools-1.0.0.msi` - Windows安装程序
+          
+          #### Linux  
+          - **便携版**: `jtools-linux.tar.gz` - 包含fat JAR和启动脚本
+          - **DEB包**: `jtools_1.0.0_amd64.deb` - Debian/Ubuntu安装包
+          - **RPM包**: `jtools-1.0.0-1.x86_64.rpm` - RedHat/CentOS/Fedora安装包
+          
+          #### macOS
+          - **便携版**: `jtools-macos.zip` - 包含fat JAR和启动脚本  
+          - **DMG包**: `jtools-1.0.0.dmg` - macOS安装镜像
+          
+          #### 通用JAR
+          - **Fat JAR**: `jtools-${{ steps.get_version.outputs.VERSION }}.jar` - 独立运行的完整JAR文件
           
           ### 🎯 主要功能
           
@@ -130,14 +141,17 @@ jobs:
             platform: linux
             executable-suffix: ""
             archive-suffix: "tar.gz"
+            native-formats: "deb,rpm"
           - os: windows-latest
             platform: windows
             executable-suffix: ".exe"
             archive-suffix: "zip"
+            native-formats: "msi"
           - os: macos-latest
             platform: macos
             executable-suffix: ""
             archive-suffix: "zip"
+            native-formats: "dmg"
     
     runs-on: ${{ matrix.os }}
     
@@ -355,7 +369,8 @@ jobs:
       shell: cmd
       run: gradlew.bat clean jvmJar --no-daemon
       
-    - name: Verify fat JAR
+    - name: Verify fat JAR (Unix)
+      if: matrix.os != 'windows-latest'
       run: |
         JAR_SIZE=$(ls -la build/libs/jtools-jvm-1.0.0.jar | awk '{print $5}')
         echo "JAR size: $JAR_SIZE bytes"
@@ -364,6 +379,18 @@ jobs:
         else
           echo "✅ JAR size looks good for a fat JAR"
         fi
+        
+    - name: Verify fat JAR (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: powershell
+      run: |
+        $JAR_SIZE = (Get-Item "build\libs\jtools-jvm-1.0.0.jar").Length
+        Write-Host "JAR size: $JAR_SIZE bytes"
+        if ($JAR_SIZE -lt 50000000) {
+          Write-Host "⚠️  JAR size seems too small for a fat JAR (< 50MB)"
+        } else {
+          Write-Host "✅ JAR size looks good for a fat JAR"
+        }
       
     - name: Build executables (Unix)
       if: matrix.os != 'windows-latest'
@@ -436,23 +463,60 @@ jobs:
         cd dist
         zip -r jtools-${{ matrix.platform }}.zip jtools-${{ matrix.platform }}/
         
+    - name: Build native packages (Linux)
+      if: matrix.platform == 'linux'
+      run: |
+        # 为Linux构建deb和rpm包
+        ./gradlew packageDeb packageRpm --no-daemon
+        
+    - name: Build native packages (macOS)
+      if: matrix.platform == 'macos'
+      run: |
+        # 为macOS构建dmg包
+        ./gradlew packageDmg --no-daemon
+        
+    - name: Build native packages (Windows)
+      if: matrix.platform == 'windows'
+      shell: cmd
+      run: |
+        # 为Windows构建msi包
+        gradlew.bat packageMsi --no-daemon
+        
     - name: Upload Release Asset (Linux)
       if: matrix.platform == 'linux'
       uses: ncipollo/release-action@v1
       with:
         tag: ${{ needs.create-release.outputs.version }}
-        artifacts: "./dist/jtools-${{ matrix.platform }}.tar.gz"
+        artifacts: |
+          ./dist/jtools-${{ matrix.platform }}.tar.gz
+          ./build/compose/binaries/main/deb/*.deb
+          ./build/compose/binaries/main/rpm/*.rpm
         token: ${{ secrets.GITHUB_TOKEN }}
         allowUpdates: true
         omitBodyDuringUpdate: true
         omitNameDuringUpdate: true
         
-    - name: Upload Release Asset (Windows/macOS)
-      if: matrix.platform != 'linux'
+    - name: Upload Release Asset (Windows)
+      if: matrix.platform == 'windows'
       uses: ncipollo/release-action@v1
       with:
         tag: ${{ needs.create-release.outputs.version }}
-        artifacts: "./dist/jtools-${{ matrix.platform }}.zip"
+        artifacts: |
+          ./dist/jtools-${{ matrix.platform }}.zip
+          ./build/compose/binaries/main/msi/*.msi
+        token: ${{ secrets.GITHUB_TOKEN }}
+        allowUpdates: true
+        omitBodyDuringUpdate: true
+        omitNameDuringUpdate: true
+        
+    - name: Upload Release Asset (macOS)
+      if: matrix.platform == 'macos'
+      uses: ncipollo/release-action@v1
+      with:
+        tag: ${{ needs.create-release.outputs.version }}
+        artifacts: |
+          ./dist/jtools-${{ matrix.platform }}.zip
+          ./build/compose/binaries/main/dmg/*.dmg
         token: ${{ secrets.GITHUB_TOKEN }}
         allowUpdates: true
         omitBodyDuringUpdate: true
