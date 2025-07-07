@@ -476,49 +476,67 @@ jobs:
         
     - name: Build native packages (Windows)
       if: matrix.platform == 'windows'
-      shell: cmd
+      shell: powershell
       run: |
-        REM 为Windows构建msi包
-        gradlew.bat packageMsi --no-daemon || echo "MSI packaging failed, skipping..."
+        try {
+          # 为Windows构建msi包
+          .\gradlew.bat packageMsi --no-daemon
+          Write-Host "MSI packaging succeeded"
+        } catch {
+          Write-Host "MSI packaging failed: $($_.Exception.Message)"
+          Write-Host "Continuing with portable version only..."
+        }
         
-    - name: Upload Release Asset (Linux)
+    - name: Upload Release Assets (Linux)
       if: matrix.platform == 'linux'
-      uses: ncipollo/release-action@v1
-      with:
-        tag: ${{ needs.create-release.outputs.version }}
-        artifacts: |
-          ./dist/jtools-${{ matrix.platform }}.tar.gz
-          ./build/compose/binaries/main/deb/*.deb
-        token: ${{ secrets.GITHUB_TOKEN }}
-        allowUpdates: true
-        omitBodyDuringUpdate: true
-        omitNameDuringUpdate: true
+      shell: bash
+      run: |
+        # 上传便携版包
+        gh release upload ${{ needs.create-release.outputs.version }} ./dist/jtools-${{ matrix.platform }}.tar.gz --clobber
         
-    - name: Upload Release Asset (Windows)
+        # 检查并上传DEB包（如果存在）
+        if ls ./build/compose/binaries/main/deb/*.deb 1> /dev/null 2>&1; then
+          gh release upload ${{ needs.create-release.outputs.version }} ./build/compose/binaries/main/deb/*.deb --clobber
+          echo "DEB package uploaded successfully"
+        else
+          echo "No DEB package found, skipping DEB upload"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload Release Assets (Windows)
       if: matrix.platform == 'windows'
-      uses: ncipollo/release-action@v1
-      with:
-        tag: ${{ needs.create-release.outputs.version }}
-        artifacts: |
-          ./dist/jtools-${{ matrix.platform }}.zip
-          ./build/compose/binaries/main/msi/*.msi
-        token: ${{ secrets.GITHUB_TOKEN }}
-        allowUpdates: true
-        omitBodyDuringUpdate: true
-        omitNameDuringUpdate: true
+      shell: powershell
+      run: |
+        # 上传便携版包
+        gh release upload ${{ needs.create-release.outputs.version }} ./dist/jtools-${{ matrix.platform }}.zip --clobber
         
-    - name: Upload Release Asset (macOS)
+        # 检查并上传MSI包（如果存在）
+        if (Test-Path "./build/compose/binaries/main/msi/*.msi") {
+          gh release upload ${{ needs.create-release.outputs.version }} ./build/compose/binaries/main/msi/*.msi --clobber
+          Write-Host "MSI package uploaded successfully"
+        } else {
+          Write-Host "No MSI package found, skipping MSI upload"
+        }
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload Release Assets (macOS)
       if: matrix.platform == 'macos'
-      uses: ncipollo/release-action@v1
-      with:
-        tag: ${{ needs.create-release.outputs.version }}
-        artifacts: |
-          ./dist/jtools-${{ matrix.platform }}.zip
-          ./build/compose/binaries/main/dmg/*.dmg
-        token: ${{ secrets.GITHUB_TOKEN }}
-        allowUpdates: true
-        omitBodyDuringUpdate: true
-        omitNameDuringUpdate: true
+      shell: bash
+      run: |
+        # 上传便携版包
+        gh release upload ${{ needs.create-release.outputs.version }} ./dist/jtools-${{ matrix.platform }}.zip --clobber
+        
+        # 检查并上传DMG包（如果存在）
+        if ls ./build/compose/binaries/main/dmg/*.dmg 1> /dev/null 2>&1; then
+          gh release upload ${{ needs.create-release.outputs.version }} ./build/compose/binaries/main/dmg/*.dmg --clobber
+          echo "DMG package uploaded successfully"
+        else
+          echo "No DMG package found, skipping DMG upload"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-native-packages:
     needs: create-release
