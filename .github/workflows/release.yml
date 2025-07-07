@@ -148,18 +148,30 @@ jobs:
     - name: Build executables (Unix)
       if: matrix.os != 'windows-latest'
       run: |
-        chmod +x build-gui.sh
-        ./build-gui.sh
+        # 创建GUI可执行脚本
+        cat > jellyfin-tools-gui << 'EOF'
+        #!/bin/bash
+        DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+        java -cp "$DIR/jtools-jvm-1.0.0.jar" com.jtools.jellyfin.gui.MainKt "$@"
+        EOF
+        chmod +x jellyfin-tools-gui
+        
+        # 创建CLI可执行脚本
+        cat > jellyfin-tools-cli << 'EOF'
+        #!/bin/bash
+        DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+        java -jar "$DIR/jtools-jvm-1.0.0.jar" "$@"
+        EOF
+        chmod +x jellyfin-tools-cli
         
     - name: Build executables (Windows)
       if: matrix.os == 'windows-latest'
       shell: cmd
       run: |
-        gradlew.bat jvmJar
         echo @echo off > jellyfin-tools-gui.bat
-        echo java -cp "%%~dp0build\libs\jtools-jvm-1.0.0.jar" com.jtools.jellyfin.gui.MainKt %%* >> jellyfin-tools-gui.bat
+        echo java -cp "%%~dp0jtools-jvm-1.0.0.jar" com.jtools.jellyfin.gui.MainKt %%* >> jellyfin-tools-gui.bat
         echo @echo off > jellyfin-tools-cli.bat
-        echo java -jar "%%~dp0build\libs\jtools-jvm-1.0.0.jar" %%* >> jellyfin-tools-cli.bat
+        echo java -jar "%%~dp0jtools-jvm-1.0.0.jar" %%* >> jellyfin-tools-cli.bat
         
     - name: Create distribution directory
       run: |
@@ -168,7 +180,7 @@ jobs:
     - name: Copy files (Unix)
       if: matrix.os != 'windows-latest'
       run: |
-        cp build/libs/*.jar dist/jtools-${{ matrix.platform }}/
+        cp build/libs/jtools-jvm-1.0.0.jar dist/jtools-${{ matrix.platform }}/
         cp jellyfin-tools-gui dist/jtools-${{ matrix.platform }}/
         cp jellyfin-tools-cli dist/jtools-${{ matrix.platform }}/
         cp README.md dist/jtools-${{ matrix.platform }}/
@@ -179,7 +191,7 @@ jobs:
       shell: cmd
       run: |
         mkdir "dist\jtools-${{ matrix.platform }}"
-        copy "build\libs\*.jar" "dist\jtools-${{ matrix.platform }}\"
+        copy "build\libs\jtools-jvm-1.0.0.jar" "dist\jtools-${{ matrix.platform }}\"
         copy "jellyfin-tools-gui.bat" "dist\jtools-${{ matrix.platform }}\"
         copy "jellyfin-tools-cli.bat" "dist\jtools-${{ matrix.platform }}\"
         copy "README.md" "dist\jtools-${{ matrix.platform }}\"
