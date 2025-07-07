@@ -95,11 +95,21 @@ kotlin {
 
 // Application configuration moved to Compose Desktop
 
+// 重新配置jvmJar任务以正确包含所有依赖
 tasks.named<Jar>("jvmJar") {
     manifest {
         attributes["Main-Class"] = "com.jtools.jellyfin.MainKt"
     }
-    from(configurations.getByName("jvmRuntimeClasspath").map { if (it.isDirectory) it else zipTree(it) })
+    
+    val jvmMain = kotlin.jvm().compilations.getByName("main")
+    from(jvmMain.output)
+    
+    dependsOn(jvmMain.compileTaskProvider)
+    
+    from({
+        jvmMain.runtimeDependencyFiles.filter { it.name.endsWith("jar") }.map { zipTree(it) }
+    })
+    
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
