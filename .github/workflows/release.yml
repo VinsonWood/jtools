@@ -354,15 +354,18 @@ jobs:
         cd dist
         tar -czf jtools-${{ matrix.platform }}.tar.gz jtools-${{ matrix.platform }}/
         
-    - name: Create archive (Windows/macOS)
-      if: matrix.platform != 'linux'
+    - name: Create archive (Windows)
+      if: matrix.platform == 'windows'
+      shell: powershell
       run: |
         cd dist
-        if [ "${{ matrix.platform }}" = "windows" ]; then
-          powershell "Compress-Archive -Path 'jtools-${{ matrix.platform }}' -DestinationPath 'jtools-${{ matrix.platform }}.zip'"
-        else
-          zip -r jtools-${{ matrix.platform }}.zip jtools-${{ matrix.platform }}/
-        fi
+        Compress-Archive -Path "jtools-${{ matrix.platform }}" -DestinationPath "jtools-${{ matrix.platform }}.zip"
+        
+    - name: Create archive (macOS)
+      if: matrix.platform == 'macos'
+      run: |
+        cd dist
+        zip -r jtools-${{ matrix.platform }}.zip jtools-${{ matrix.platform }}/
         
     - name: Upload Release Asset (Linux)
       if: matrix.platform == 'linux'
