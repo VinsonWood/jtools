@@ -153,12 +153,13 @@ jobs:
         
     - name: Build executables (Windows)
       if: matrix.os == 'windows-latest'
+      shell: cmd
       run: |
-        .\gradlew.bat jvmJar
-        echo "@echo off" > jellyfin-tools-gui.bat
-        echo "java -cp \"%~dp0build\libs\jtools-jvm-1.0.0.jar\" com.jtools.jellyfin.gui.MainKt %*" >> jellyfin-tools-gui.bat
-        echo "@echo off" > jellyfin-tools-cli.bat
-        echo "java -jar \"%~dp0build\libs\jtools-jvm-1.0.0.jar\" %*" >> jellyfin-tools-cli.bat
+        gradlew.bat jvmJar
+        echo @echo off > jellyfin-tools-gui.bat
+        echo java -cp "%%~dp0build\libs\jtools-jvm-1.0.0.jar" com.jtools.jellyfin.gui.MainKt %%* >> jellyfin-tools-gui.bat
+        echo @echo off > jellyfin-tools-cli.bat
+        echo java -jar "%%~dp0build\libs\jtools-jvm-1.0.0.jar" %%* >> jellyfin-tools-cli.bat
         
     - name: Create distribution directory
       run: |
@@ -175,7 +176,9 @@ jobs:
         
     - name: Copy files (Windows)
       if: matrix.os == 'windows-latest'
+      shell: cmd
       run: |
+        mkdir "dist\jtools-${{ matrix.platform }}"
         copy "build\libs\*.jar" "dist\jtools-${{ matrix.platform }}\"
         copy "jellyfin-tools-gui.bat" "dist\jtools-${{ matrix.platform }}\"
         copy "jellyfin-tools-cli.bat" "dist\jtools-${{ matrix.platform }}\"
@@ -193,7 +196,7 @@ jobs:
       run: |
         cd dist
         if [ "${{ matrix.platform }}" = "windows" ]; then
-          powershell Compress-Archive -Path "jtools-${{ matrix.platform }}" -DestinationPath "jtools-${{ matrix.platform }}.zip"
+          powershell "Compress-Archive -Path 'jtools-${{ matrix.platform }}' -DestinationPath 'jtools-${{ matrix.platform }}.zip'"
         else
           zip -r jtools-${{ matrix.platform }}.zip jtools-${{ matrix.platform }}/
         fi
