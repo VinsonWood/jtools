@@ -1,5 +1,9 @@
 name: Release
 
+permissions:
+  contents: write
+  packages: write
+
 on:
   push:
     tags:
@@ -15,8 +19,7 @@ jobs:
   create-release:
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      release_id: ${{ steps.create_release.outputs.id }}
+      version: ${{ steps.get_version.outputs.VERSION }}
     
     steps:
     - name: Checkout code
@@ -33,12 +36,11 @@ jobs:
         
     - name: Create Release
       id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: ncipollo/release-action@v1
       with:
-        tag_name: ${{ steps.get_version.outputs.VERSION }}
-        release_name: "Jellyfin工具箱 ${{ steps.get_version.outputs.VERSION }}"
+        tag: ${{ steps.get_version.outputs.VERSION }}
+        name: "Jellyfin工具箱 ${{ steps.get_version.outputs.VERSION }}"
+        token: ${{ secrets.GITHUB_TOKEN }}
         body: |
           ## 🚀 Jellyfin工具箱 ${{ steps.get_version.outputs.VERSION }}
           
@@ -197,25 +199,25 @@ jobs:
         
     - name: Upload Release Asset (Linux)
       if: matrix.platform == 'linux'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: ncipollo/release-action@v1
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./dist/jtools-${{ matrix.platform }}.tar.gz
-        asset_name: jtools-${{ matrix.platform }}.tar.gz
-        asset_content_type: application/gzip
+        tag: ${{ needs.create-release.outputs.version }}
+        artifacts: "./dist/jtools-${{ matrix.platform }}.tar.gz"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        allowUpdates: true
+        omitBodyDuringUpdate: true
+        omitNameDuringUpdate: true
         
     - name: Upload Release Asset (Windows/macOS)
       if: matrix.platform != 'linux'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: ncipollo/release-action@v1
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./dist/jtools-${{ matrix.platform }}.zip
-        asset_name: jtools-${{ matrix.platform }}.zip
-        asset_content_type: application/zip
+        tag: ${{ needs.create-release.outputs.version }}
+        artifacts: "./dist/jtools-${{ matrix.platform }}.zip"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        allowUpdates: true
+        omitBodyDuringUpdate: true
+        omitNameDuringUpdate: true
 
   build-native-packages:
     needs: create-release
@@ -258,11 +260,11 @@ jobs:
         fi
         
     - name: Upload universal JAR
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: ncipollo/release-action@v1
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./build/libs/jtools-jvm-1.0.0.jar
-        asset_name: jtools-${{ steps.get_version.outputs.VERSION }}.jar
-        asset_content_type: application/java-archive
+        tag: ${{ steps.get_version.outputs.VERSION }}
+        artifacts: "./build/libs/jtools-jvm-1.0.0.jar"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        allowUpdates: true
+        omitBodyDuringUpdate: true
+        omitNameDuringUpdate: true
